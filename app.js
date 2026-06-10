@@ -2,7 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const getDb = require('./db/database');
 
-const venueRoutes = require('./routes/venue');
+const venueRoutes = require('./routes/venues');
+
+const generateSlots =
+  require('./utils/slotGenerator');
+
+  const bookingRoutes =
+  require('./routes/bookings');
+
+
 
 const app = express();
 
@@ -17,9 +25,16 @@ app.get('/', (req, res) => {
   });
 });
 
+app.use('/bookings', bookingRoutes);
+
 const PORT = 3000;
 
 async function initializeDatabase() {
+
+  const today =
+  new Date().toISOString().split('T')[0];
+
+await generateSlots(today);
 
   const db = await getDb();
 
@@ -29,6 +44,23 @@ async function initializeDatabase() {
       name TEXT NOT NULL,
       location TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS slots(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  venue_id INTEGER,
+  slot_date TEXT,
+  start_time TEXT,
+  end_time TEXT,
+  status TEXT DEFAULT 'AVAILABLE'
+);
+
+CREATE TABLE IF NOT EXISTS bookings(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_name TEXT,
+  venue_id INTEGER,
+  slot_id INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
   `);
 
   const venues = await db.all(
