@@ -60,4 +60,115 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+
+  const { userName } = req.query;
+
+  const db = await getDb();
+
+  try {
+
+    const bookings = await db.all(
+      `
+      SELECT
+        b.id,
+        v.name as venueName,
+        s.slot_date,
+        s.start_time,
+        s.end_time
+      FROM bookings b
+      INNER JOIN venues v
+        ON v.id = b.venue_id
+      INNER JOIN slots s
+        ON s.id = b.slot_id
+      WHERE b.user_name = ?
+      ORDER BY b.id DESC
+      `,
+      [userName]
+    );
+
+    res.json(bookings);
+
+  } catch (e) {
+
+    res.status(500).json({
+      error: e.message,
+    });
+
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+
+  const bookingId = req.params.id;
+
+  const db = await getDb();
+
+  try {
+
+    await db.exec(
+      'BEGIN TRANSACTION'
+    );
+
+    const booking =
+      await db.get(
+        `
+        SELECT *
+        FROM bookings
+        WHERE id = ?
+        `,
+        [bookingId]
+      );
+
+    if (!booking) {
+
+      await db.exec(
+        'ROLLBACK'
+      );
+
+      return res.status(404).json({
+        message:
+            'Booking not found',
+      });
+    }
+
+    await db.run(
+      `
+      UPDATE slots
+      SET status='AVAILABLE'
+      WHERE id=?
+      `,
+      [booking.slot_id]
+    );
+
+    await db.run(
+      `
+      DELETE FROM bookings
+      WHERE id=?
+      `,
+      [bookingId]
+    );
+
+    await db.exec(
+      'COMMIT'
+    );
+
+    res.json({
+      success: true,
+      message:
+          'Booking cancelled',
+    });
+
+  } catch (e) {
+
+    await db.exec(
+      'ROLLBACK'
+    );
+
+    res.status(500).json({
+      error: e.message,
+    });
+  }
+});
+
 module.exports = router;
