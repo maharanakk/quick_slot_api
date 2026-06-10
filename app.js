@@ -71,27 +71,27 @@ CREATE TABLE IF NOT EXISTS bookings(
 
     await db.run(
       'INSERT INTO venues(name,location) VALUES (?,?)',
-      ['Cricket Ground', 'Chennai']
+      ['Cricket Ground', 'Bengaluru']
     );
 
     await db.run(
       'INSERT INTO venues(name,location) VALUES (?,?)',
-      ['Football Arena', 'Chennai']
+      ['Football Arena', 'Bengaluru']
     );
 
     await db.run(
       'INSERT INTO venues(name,location) VALUES (?,?)',
-      ['Badminton Court', 'Chennai']
+      ['Badminton Court', 'Bengaluru']
     );
 
     await db.run(
       'INSERT INTO venues(name,location) VALUES (?,?)',
-      ['Tennis Club', 'Chennai']
+      ['Tennis Club', 'Bengaluru']
     );
 
     await db.run(
       'INSERT INTO venues(name,location) VALUES (?,?)',
-      ['Swimming Pool', 'Chennai']
+      ['Swimming Pool', 'Bengaluru']
     );
 
     console.log('Venue seed data inserted');

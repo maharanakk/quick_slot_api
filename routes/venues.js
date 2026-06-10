@@ -29,68 +29,113 @@ router.get('/', async (req, res) => {
   }
 });
 
-/**
- * GET /venues/:id/slots?date=YYYY-MM-DD
- * Get slots for a venue on a specific date
- */
-router.get('/:id/slots', async (req, res) => {
-  try {
-    const db = await getDb();
+const generateSlotsForDate = async (
+  db,
+  venueId,
+  date,
+) => {
 
-    const venueId = parseInt(req.params.id);
-    const date = req.query.date;
+  const existingSlots =
+      await db.all(
+    `
+    SELECT *
+    FROM slots
+    WHERE venue_id=?
+    AND slot_date=?
+    `,
+    [venueId, date]
+  );
 
-    if (!date) {
-      return res.status(400).json({
-        success: false,
-        message: 'date query parameter is required',
-      });
-    }
+  if (existingSlots.length > 0) {
+    return;
+  }
 
-    // Check venue exists
-    const venue = await db.get(
-      'SELECT * FROM venues WHERE id = ?',
-      [venueId]
-    );
+  for (
+    let hour = 6;
+    hour < 22;
+    hour++
+  ) {
 
-    if (!venue) {
-      return res.status(404).json({
-        success: false,
-        message: 'Venue not found',
-      });
-    }
-
-    const slots = await db.all(
+    await db.run(
       `
-      SELECT
-        id,
+      INSERT INTO slots
+      (
         venue_id,
         slot_date,
         start_time,
         end_time,
         status
-      FROM slots
-      WHERE venue_id = ?
-      AND slot_date = ?
-      ORDER BY start_time
+      )
+      VALUES (?,?,?,?,?)
       `,
-      [venueId, date]
+      [
+        venueId,
+        date,
+        `${hour}:00`,
+        `${hour + 1}:00`,
+        'AVAILABLE'
+      ]
+    );
+  }
+};
+
+/**
+ * GET /venues/:id/slots?date=YYYY-MM-DD
+ * Get slots for a venue on a specific date
+ */
+router.get('/:id/slots', async (req, res) => {
+
+  try {
+
+    const db = await getDb();
+
+    const venueId =
+      parseInt(req.params.id);
+
+    const date =
+      req.query.date;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message:
+            'Date is required',
+      });
+    }
+
+    // Auto-create slots if missing
+    await generateSlotsForDate(
+      db,
+      venueId,
+      date,
     );
 
-    res.status(200).json({
+    const slots =
+      await db.all(
+        `
+        SELECT *
+        FROM slots
+        WHERE venue_id=?
+        AND slot_date=?
+        ORDER BY start_time
+        `,
+        [venueId, date]
+      );
+
+    res.json({
       success: true,
-      venue: venue.name,
       date,
-      totalSlots: slots.length,
+      totalSlots:
+          slots.length,
       slots,
     });
+
   } catch (error) {
-    console.error('Error fetching slots:', error);
 
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch slots',
-      error: error.message,
+      error:
+          error.message,
     });
   }
 });
